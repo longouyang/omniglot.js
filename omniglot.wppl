@@ -1,3 +1,8 @@
+/*
+  (local-set-key (kbd "s-r") (lambda () (interactive) (save-buffer) (process-send-string "*shell*" "echo '\n'; webppl omniglot.wppl --require underscore --require b-spline\n")))
+
+    */
+
 var _ = underscore;
 
 var pam = function(a, f) {
@@ -127,8 +132,10 @@ var sampleStroke = function(i, numSubStrokes) {
       return idsSoFar
     } else {
       // todo: markov
-      //return todo(_.last(identitiesSoFar))
-      return samplePrimitiveIds(idsSoFar.concat(uniformDraw(allPrimitiveIds)));
+      //return todo(_.last(idsSoFar))
+      //var newId = uniformDraw(allPrimitiveIds);
+      var newId = _.last(idsSoFar) == 'h' ? 'v' : 'h';
+      return samplePrimitiveIds(idsSoFar.concat(newId))
     }
   }
   var primitiveIds = samplePrimitiveIds([uniformDraw(allPrimitiveIds)]);
@@ -178,4 +185,61 @@ var sampleToken = function(params) {
   // render
 }
 
-JSON.stringify(sampleType(),null,2)
+var makeTrajectory = function(x) {
+  var subStrokes = x.subStrokes,
+      relation = x.relation;
+
+  // todo: perturb scale and control points
+
+  var makeSplines = function(i, splinesSoFar, startX, startY) {
+    if (i == subStrokes.length) {
+      return splinesSoFar
+    } else {
+
+      var controlPoints = subStrokes[i].controlPoints,
+          scale = subStrokes[i].scale;
+
+      // scale control points and convert to flattened format
+      var controlPointsScaled = pam(subStrokes[i].controlPoints,
+                                       function(d) {
+                                         return [scale * d.x, scale * d.y]
+                                       });
+
+      var abstractSplinePoints = pam([0,0.5,1],
+                                     function(t) { return
+                                                   bSpline.call(null,
+                                                                t,
+                                                                3,
+                                                                controlPointsScaled) });
+
+      // offsetX is such that abstractSplinePoints[0][0] + offsetX = startX
+      // so offsetX = startX - abstractSplinePoints[0][0]
+
+      var offsetX = startX - abstractSplinePoints[0][0],
+          offsetY = startY - abstractSplinePoints[0][1];
+
+      var splinePoints = pam(abstractSplinePoints,
+                                     function(pt) {
+                                       return [pt[0] + offsetX, pt[1] + offsetY]
+                                     }
+                                    )
+
+      return makeSplines(i+1,
+                         splinesSoFar.concat(splinePoints),
+                         _.last(splinePoints)[0],
+                         _.last(splinePoints)[1]
+                        )
+    }
+  }
+
+  return makeSplines(0, [], 0, 1);
+
+}
+
+util.seedRNG(3)
+var type = sampleType();
+var stroke = type[0];
+
+//console.log(JSON.stringify(stroke,null,2))
+
+makeTrajectory(stroke)

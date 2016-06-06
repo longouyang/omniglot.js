@@ -1,0 +1,15 @@
+{
+  "name": "omniglot",
+  "version": "0.0.1",
+  "description": "",
+  "main": "_omniglot.js",
+  "dependencies": {
+    "b-spline": "^1.0.5"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}
