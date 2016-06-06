@@ -1,0 +1,181 @@
+var _ = underscore;
+
+var pam = function(a, f) {
+  return map(f, a);
+}
+
+var sampleType = function() {
+
+  var numStrokes = 3;/*categorical([4.2, 4.1, 3, 1.5, 0.5, 0.25, 0.125, 0.0625, 0.0525, 0.03],
+                               [1,   2,   3, 4,   5,   6,    7,     8,      9,      10]
+                              );*/
+
+  var sampleNumSubStrokes = function(n) {
+    if (n == 1) {
+      return binomial({n: 9, p: 0.15}) + 1 // HT mathematica
+    } else {
+      return categorical([0.5, 0.2, 0.15, 0.08, 0.04, 0.02, 0.01, 0.005, 0.0025, 0.00125],
+                         [1,   2,   3,    4,    5,    6,    7,    8,     9,      10]
+                        )
+    }
+  }
+
+  var sampleRelationDetails = function(type, prevStrokes) {
+    if (type == 'independent') {
+      // todo: this isn't quite what lake does (he has some variable J that depends on the stroke index) but this is not clear to me
+      return {x: uniform(0,1),
+              y: uniform(0,1)
+             }
+    } else if (type == 'start' || type == 'end') {
+      var prevStrokeIndex = randomInteger(prevStrokes.length);
+      return {prevStrokeIndex: prevStrokeIndex}
+    } else { // type == 'along
+      var prevStrokeIndex = randomInteger(prevStrokes.length),
+          prevStroke = prevStrokes[prevStrokeIndex];
+      var prevSubStrokeIndex = randomInteger(prevStroke.subStrokes.length);
+      var splineCoordinate = uniform(0,1);
+
+      return {prevStrokeIndex: prevStrokeIndex,
+              prevSubStrokeIndex: prevSubStrokeIndex,
+              splineCoordinate: splineCoordinate
+      }
+    }
+  }
+
+  // for each stroke, sample relation to previous strokes and substrokes
+  var helper = function(i, strokesSoFar) {
+    if (i == numStrokes) {
+      return strokesSoFar
+    } else {
+      var numSubStrokes = sampleNumSubStrokes(numStrokes);
+      var subStrokes = sampleStroke(i, numSubStrokes);
+      var relationType = i == 0 ? 'independent' : 'along';// uniformDraw(['independent','start','end','along']);
+      var relationDetails = sampleRelationDetails(relationType, strokesSoFar);
+      var relation = _.extend({type: relationType}, relationDetails);
+
+      return helper(i + 1,
+                    strokesSoFar.concat({subStrokes: subStrokes,
+                                         relation: relation})
+                   )
+    }
+  }
+
+  var params = helper(0, []);
+
+  return params;
+  //return function() { sampleToken(params) }
+}
+
+var allPrimitiveIds = ['v', 'h'];
+
+// todo: primitive control points are indexed by stroke index and substroke index
+// todo: get real data (although the most likely primitives are straight lines anyway, see bottom right of fig s2)
+// todo: use MultivariateGaussian
+var primitiveMeans = {
+  v: [{x: 0.5, y: 0.7},
+      {x: 0.5, y: 0.6},
+      {x: 0.5, y: 0.5},
+      {x: 0.5, y: 0.4},
+      {x: 0.5, y: 0.3}
+     ],
+  h: [{y: 0.5, x: 0.3},
+      {y: 0.5, x: 0.4},
+      {y: 0.5, x: 0.5},
+      {y: 0.5, x: 0.6},
+      {y: 0.5, x: 0.7}
+     ]
+};
+
+var primitiveSds = {
+  v: [{x: 0.02, y: 0.02},
+      {x: 0.02, y: 0.02},
+      {x: 0.02, y: 0.02},
+      {x: 0.02, y: 0.02},
+      {x: 0.02, y: 0.02}
+     ],
+  h: [{x: 0.02, y: 0.02},
+      {x: 0.02, y: 0.02},
+      {x: 0.02, y: 0.02},
+      {x: 0.02, y: 0.02},
+      {x: 0.02, y: 0.02}
+  ]
+}
+
+var sampleControlPoints = function(primitiveId) {
+  var means = primitiveMeans[primitiveId],
+      sds = primitiveSds[primitiveId];
+
+  return map2(
+    function(m,s) {
+      return {x: gaussian(m.x,s.x), y: gaussian(m.y,s.y)}
+    },
+    means,
+    sds);
+};
+
+// todo: primitive scale is indexed by stroke index and substroke index
+var sampleScale = function(primitiveId) {
+  var a = 2, b = 2;
+  var shape = a, scale = 1/b;
+  return gamma(shape, scale);
+}
+
+// a stroke is an array of substrokes
+var sampleStroke = function(i, numSubStrokes) {
+  var samplePrimitiveIds = function(idsSoFar /* initialized with 1 element */) {
+    if (idsSoFar.length == numSubStrokes) {
+      return idsSoFar
+    } else {
+      // todo: markov
+      //return todo(_.last(identitiesSoFar))
+      return samplePrimitiveIds(idsSoFar.concat(uniformDraw(allPrimitiveIds)));
+    }
+  }
+  var primitiveIds = samplePrimitiveIds([uniformDraw(allPrimitiveIds)]);
+
+  // for each substroke, sample control points and scale
+  var strokes = pam(primitiveIds,
+                    function(id) {
+                      return {controlPoints: sampleControlPoints(id),
+                              scale: sampleScale(id)}
+                    });
+
+
+  return strokes;
+}
+
+
+var sampleToken = function(params) {
+  var strokes = params.strokes,
+      numStrokes = strokes.length,
+      relations = params.relations;
+
+  var helper = function(i, trajectoriesSoFar) {
+
+    if (trajectoriesSoFar.length == numStrokes) {
+      return trajectoriesSoFar
+    }
+
+    if (relations[i].type == 'along') {
+      // perturb attachment along the spline
+      var tau = todo(); // "type-level spline coordinate t_i \in R" (todo: shouldn't tau be in the unit interval?)
+    }
+
+    // sample starting location
+
+    // perturb control points
+
+    // compose trajectory
+    return helper(i+1, trajectoriesSoFar.concat(trajectory))
+  }
+
+  // sample global image transformation
+
+  // sample amount of pixel noise
+
+  // sample amount of blur
+
+  // render
+}
+
+JSON.stringify(sampleType(),null,2)
