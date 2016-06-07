@@ -73,7 +73,6 @@ var sampleType = function() {
 
 var allPrimitiveIds = ['v', 'h'];
 
-// todo: primitive control points are indexed by stroke index and substroke index
 // todo: get real data (although the most likely primitives are straight lines anyway, see bottom right of fig s2)
 // todo: use MultivariateGaussian
 var primitiveMeans = {
