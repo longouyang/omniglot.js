@@ -52,7 +52,7 @@ var sampleType = function() {
     if (i == numStrokes) {
       return strokesSoFar
     } else {
-      var numSubStrokes = sampleNumSubStrokes(numStrokes);
+      var numSubStrokes = 4;//sampleNumSubStrokes(numStrokes);
       var subStrokes = sampleStroke(i, numSubStrokes);
       var relationType = i == 0 ? 'independent' : 'along';// uniformDraw(['independent','start','end','along']);
       var relationDetails = sampleRelationDetails(relationType, strokesSoFar);
@@ -92,17 +92,17 @@ var primitiveMeans = {
 };
 
 var primitiveSds = {
-  v: [{x: 0.02, y: 0.02},
-      {x: 0.02, y: 0.02},
-      {x: 0.02, y: 0.02},
-      {x: 0.02, y: 0.02},
-      {x: 0.02, y: 0.02}
+  v: [{x: 0.01, y: 0.01},
+      {x: 0.01, y: 0.01},
+      {x: 0.01, y: 0.01},
+      {x: 0.01, y: 0.01},
+      {x: 0.01, y: 0.01}
      ],
-  h: [{x: 0.02, y: 0.02},
-      {x: 0.02, y: 0.02},
-      {x: 0.02, y: 0.02},
-      {x: 0.02, y: 0.02},
-      {x: 0.02, y: 0.02}
+  h: [{x: 0.01, y: 0.01},
+      {x: 0.01, y: 0.01},
+      {x: 0.01, y: 0.01},
+      {x: 0.01, y: 0.01},
+      {x: 0.01, y: 0.01}
   ]
 }
 
@@ -198,6 +198,7 @@ var makeTrajectory = function(x) {
 
       var controlPoints = subStrokes[i].controlPoints,
           scale = subStrokes[i].scale;
+      console.log(controlPoints);
 
       // scale control points and convert to flattened format
       var controlPointsScaled = pam(subStrokes[i].controlPoints,
@@ -205,7 +206,7 @@ var makeTrajectory = function(x) {
                                          return [scale * d.x, scale * d.y]
                                        });
 
-      var abstractSplinePoints = pam([0,0.5,1],
+      var abstractSplinePoints = pam(_.range(0,1 + 0.1,0.1),
                                      function(t) { return
                                                    bSpline.call(null,
                                                                 t,
@@ -242,4 +243,4 @@ var stroke = type[0];
 
 //console.log(JSON.stringify(stroke,null,2))
 
-makeTrajectory(stroke)
+JSON.stringify(makeTrajectory(stroke),null,0);
