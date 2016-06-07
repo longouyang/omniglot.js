@@ -1,0 +1,21 @@
+* 2016.06.06: cocolab hackathon
+
+** writing forward model
+
+q: are primitives learned?
+a: yes, see section 2.3.1 of supplement
+
+q: how many control points are there really?
+a: five (see last sentence of caption for figure s2)
+
+q: is the stroke starting location L redundant with the first control point of a substroke?
+remark: the spline doesn't necessarily pass through any of the control points:
+
+[[./assets/20160606_174110_47188lBD.png]]
+
+
+what's the deal with J for the independent relation? it doesn't seem stochastic (upper right of fig s2)
+
+fig s2 bottom right: top primitives are very similar.. do clustering to reduce redundancy?
+
+control points are sampled twice: once for types and once for tokens

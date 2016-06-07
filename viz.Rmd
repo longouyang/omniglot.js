@@ -22,24 +22,22 @@ for i in `seq 1 10`; do webppl omniglot.wppl --require underscore --require b-sp
 ```
 
 ```{r}
-filenames = list.files(pattern = "out")
-ds = Map(function(filename,i) transform(fromJSON(filename),seed=i),
+filenames = list.files(pattern = "5vh[0-9]")
+#filenames = filenames[!(filenames == "package.json")]
+stems = gsub(".json", "", filenames)
+ds = Map(function(filename,stem) transform(fromJSON(filename),stem=stem),
          filenames,
-         1:length(filenames)
+         stems
          )
 
 d = do.call(rbind, ds)
-```
 
-
-set points
-```{r}
 qplot(data = d,
-      facets = ~ seed,
+      facets = ~ stem,
       x = x,
       y = y,
       geom = c('path'),
       color = factor(strokeNum),
-      size = I(1))
+      size = I(1)) + xlim(-.1,1.1) + ylim(-.1,1.1)
 ```
 
