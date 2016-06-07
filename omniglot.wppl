@@ -52,7 +52,7 @@ var sampleType = function() {
     if (i == numStrokes) {
       return strokesSoFar
     } else {
-      var numSubStrokes = 4;//sampleNumSubStrokes(numStrokes);
+      var numSubStrokes = sampleNumSubStrokes(numStrokes);
       var subStrokes = sampleStroke(i, numSubStrokes);
       var relationType = i == 0 ? 'independent' : 'along';// uniformDraw(['independent','start','end','along']);
       var relationDetails = sampleRelationDetails(relationType, strokesSoFar);
@@ -87,7 +87,12 @@ var primitiveMeans = {
       {y: 0.5, x: 0.5},
       {y: 0.5, x: 0.6},
       {y: 0.5, x: 0.7}
-     ]
+     ],
+  c: [{x: 0.3, y: 0.7,
+       x: 0.4, y: 0.6,
+       x: 0.5, y: 0.5,
+       x: 0.4, y: 0.4,
+       x: 0.3, y: 0.3}]
 };
 
 var primitiveSds = {
@@ -102,7 +107,14 @@ var primitiveSds = {
       {x: 0.01, y: 0.01},
       {x: 0.01, y: 0.01},
       {x: 0.01, y: 0.01}
-  ]
+     ],
+  c: [{x: 0.01, y: 0.01},
+      {x: 0.01, y: 0.01},
+      {x: 0.01, y: 0.01},
+      {x: 0.01, y: 0.01},
+      {x: 0.01, y: 0.01}
+     ]
+
 }
 
 var sampleControlPoints = function(primitiveId) {
@@ -130,10 +142,9 @@ var sampleStroke = function(i, numSubStrokes) {
     if (idsSoFar.length == numSubStrokes) {
       return idsSoFar
     } else {
-      // todo: markov
-      //return todo(_.last(idsSoFar))
-      //var newId = uniformDraw(allPrimitiveIds);
-      var newId = _.last(idsSoFar) == 'h' ? 'v' : 'h';
+      var newId = uniformDraw(allPrimitiveIds);
+      // todo: declare markov dependencies outside of this function
+      //var newId = _.last(idsSoFar) == 'h' ? 'v' : 'h';
       return samplePrimitiveIds(idsSoFar.concat(newId))
     }
   }
@@ -184,12 +195,14 @@ var sampleToken = function(params) {
   // render
 }
 
-var makeTrajectory = function(x) {
+var makeTrajectory = function(x, _startX, _startY) {
   var subStrokes = x.subStrokes,
       relation = x.relation;
 
   // todo: perturb scale and control points
 
+  // todo: do my splines match brenden's?
+  // (e.g., should i be clamping spline to the beginning and end control points?)
   var makeSplines = function(i, splinesSoFar, startX, startY) {
     if (i == subStrokes.length) {
       return splinesSoFar
@@ -197,7 +210,6 @@ var makeTrajectory = function(x) {
 
       var controlPoints = subStrokes[i].controlPoints,
           scale = subStrokes[i].scale;
-      console.log(controlPoints);
 
       // scale control points and convert to flattened format
       var controlPointsScaled = pam(subStrokes[i].controlPoints,
@@ -225,21 +237,64 @@ var makeTrajectory = function(x) {
                                     )
 
       return makeSplines(i+1,
-                         splinesSoFar.concat(splinePoints),
+                         splinesSoFar.concat([splinePoints]),
                          _.last(splinePoints)[0],
                          _.last(splinePoints)[1]
                         )
     }
   }
 
-  return makeSplines(0, [], 0, 1);
+  return makeSplines(0, [], _startX, _startY);
 
 }
 
-util.seedRNG(3)
+var strokeToDf = function(strokeNum, stroke) {
+  mapIndexed(function(i,splinePoints) {
+    pam(splinePoints,
+        function(pt) {
+          _.extend({strokeNum: strokeNum, substrokeNum: i},
+                   {x: pt[0], y: pt[1]})
+        })
+  }, stroke)
+}
+
+var characterToDf = function(strokes) {
+  _.flatten(mapIndexed(function(i, stroke) { strokeToDf(i, stroke) },
+                       strokes))
+}
+
+var makeTrajectories = function(strokes) {
+  var helper = function(i, trajectoriesSoFar) {
+    if (i == strokes.length) {
+      return trajectoriesSoFar
+    }
+    var stroke = strokes[i],
+        r = stroke.relation;
+
+    var start = ((r.type == 'independent')
+                 ? [r.x, r.y]
+                 : ((r.type == 'start')
+                    ? _.first(_.first(trajectoriesSoFar[r.prevStrokeIndex]))
+                    : ((r.type == 'end')
+                       ? _.last(_.last(trajectoriesSoFar[r.prevStrokeIndex]))
+                       // TODO: actually use the spline coordinate
+                       : trajectoriesSoFar[r.prevStrokeIndex][r.prevSubStrokeIndex][4]
+                      )))
+
+    var trajectory = makeTrajectory(stroke, start[0], start[1]);
+
+    return helper(i+1, trajectoriesSoFar.concat([trajectory]))
+  }
+
+  return helper(0, [])
+}
+
+//util.seedRNG(5)
 var type = sampleType();
-var stroke = type[0];
+//var stroke = type[0];
 
 //console.log(JSON.stringify(stroke,null,2))
 
-JSON.stringify(makeTrajectory(stroke),null,0);
+var char = makeTrajectories(type);
+
+JSON.stringify(characterToDf(char))
