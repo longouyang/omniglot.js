@@ -1,2 +1,2 @@
 _%.js : %.wppl
-	webppl "$<" --require underscore --compile --out "$@"
+	webppl "$<" --require underscore --require b-spline --compile --out "$@"
